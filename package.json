@@ -1,0 +1,26 @@
+{
+  "name": "google-messages-for-web-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that reads and sends Google Messages for web through your logged-in Chrome via chromefile",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "bin": { "google-messages-for-web-mcp": "dist/index.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "prepare": "npm run build",
+    "lint": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "test:e2e": "bash test/e2e.sh"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2"
+  }
+}
