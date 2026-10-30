@@ -122,18 +122,21 @@ test("name match alone is not enough: ids must change after the click", async ()
   assert.equal(r.name, "New");
 });
 
-function sendFake(opts: { sendInPage: (...a: any[]) => unknown; messages: () => unknown[] }) {
-  return fakePage({
-    pageState: ready,
-    threadInfo: () => ({ path: "/web/conversations/abc", name: "Alice Example", ids: ["1"], compose: true }),
-    sendInPage: opts.sendInPage,
-    readMessages: () => ({ name: "Alice Example", messages: opts.messages() }),
-  });
+function sendFake(opts: { sendInPage: (...a: any[]) => unknown; messages: () => unknown[]; cdp?: (p: any) => unknown }) {
+  return fakePage(
+    {
+      pageState: ready,
+      threadInfo: () => ({ path: "/web/conversations/abc", name: "Alice Example", ids: ["1"], compose: true }),
+      sendInPage: opts.sendInPage,
+      readMessages: () => ({ name: "Alice Example", messages: opts.messages() }),
+    },
+    { "page.cdp": opts.cdp ?? (() => ({ result: {} })) },
+  );
 }
 const msg = (id: string, text: string, outgoing = true) => ({ id, outgoing, text, time: null, rcs: false, has_image: false, status: "Sending" });
 
 test("send succeeds when the last message is new, outgoing and matches", async () => {
-  const { call } = sendFake({ sendInPage: () => ({ clicked: true }), messages: () => [msg("1", "old", false), msg("2", "hello")] });
+  const { call } = sendFake({ sendInPage: () => ({ ready: true }), messages: () => [msg("1", "old", false), msg("2", "hello")] });
   const r: any = await createBackend(call, FAST).sendMessage("abc", "hello");
   assert.equal(r.sent, true);
   assert.equal(r.status, "Sending");
@@ -141,28 +144,36 @@ test("send succeeds when the last message is new, outgoing and matches", async (
 });
 
 test("send succeeds with a note when the new outgoing text differs", async () => {
-  const { call } = sendFake({ sendInPage: () => ({ clicked: true }), messages: () => [msg("2", "hello \u{1F600}")] });
+  const { call } = sendFake({ sendInPage: () => ({ ready: true }), messages: () => [msg("2", "hello \u{1F600}")] });
   const r: any = await createBackend(call, FAST).sendMessage("abc", "hello :)");
   assert.equal(r.sent, true);
   assert.match(r.note, /differs/);
 });
 
-test("an error after the click says the message may have been sent", async () => {
-  const eval1 = sendFake({
+test("an error once Enter is dispatched says the message may have been sent", async () => {
+  const typingFails = sendFake({
     sendInPage: () => {
       throw new Error("transport died");
     },
     messages: () => [],
   });
-  await assert.rejects(createBackend(eval1.call, FAST).sendMessage("abc", "hi"), /^Error: The message may have been sent\. Do NOT retry/);
+  await assert.rejects(createBackend(typingFails.call, FAST).sendMessage("abc", "hi"), /transport died/);
+  const enterFails = sendFake({
+    sendInPage: () => ({ ready: true }),
+    messages: () => [],
+    cdp: () => {
+      throw new Error("transport died");
+    },
+  });
+  await assert.rejects(createBackend(enterFails.call, FAST).sendMessage("abc", "hi"), /^Error: The message may have been sent\. Do NOT retry/);
   // Confirmation timeout is also ambiguous.
-  const eval2 = sendFake({ sendInPage: () => ({ clicked: true }), messages: () => [msg("1", "hi", false)] });
+  const eval2 = sendFake({ sendInPage: () => ({ ready: true }), messages: () => [msg("1", "hi", false)] });
   await assert.rejects(createBackend(eval2.call, FAST).sendMessage("abc", "hi"), /may have been sent/);
 });
 
 test("a draft-present refusal is reported as nothing sent", async () => {
   const { call } = sendFake({
-    sendInPage: () => ({ clicked: false, reason: "The compose box already holds a draft; refusing to overwrite it" }),
+    sendInPage: () => ({ ready: false, reason: "The compose box already holds a draft; refusing to overwrite it" }),
     messages: () => [],
   });
   const err = await createBackend(call, FAST).sendMessage("abc", "hi").catch((e: Error) => e);

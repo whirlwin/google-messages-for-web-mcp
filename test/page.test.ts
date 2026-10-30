@@ -46,13 +46,13 @@ test("threadInfo reports path, header name and ids", () => {
   assert.deepEqual([t.path, t.name, t.ids, t.compose], ["/web/conversations/abc123", "Alice Example", ["15601", "15602", "15603"], true]);
 });
 
-test("sendInPage refuses a wrong conversation and an existing draft", () => {
+test("sendInPage refuses a wrong conversation and an existing draft", async () => {
   installDom(FIXTURE, "https://messages.google.com/web/conversations/abc123");
-  assert.match(page.sendInPage("other", "Alice Example", "hi").reason ?? "", /not the requested/);
-  assert.match(page.sendInPage("abc123", "Bob Sample", "hi").reason ?? "", /not the requested/);
+  assert.match((await page.sendInPage("other", "Alice Example", "hi")).reason ?? "", /not the requested/);
+  assert.match((await page.sendInPage("abc123", "Bob Sample", "hi")).reason ?? "", /not the requested/);
   document.querySelector("[data-e2e-message-input-box]")!.textContent = "my unsent draft";
-  const r = page.sendInPage("abc123", "Alice Example", "hi");
-  assert.equal(r.clicked, false);
+  const r = await page.sendInPage("abc123", "Alice Example", "hi");
+  assert.equal(r.ready, false);
   assert.match(r.reason ?? "", /draft/);
   assert.equal(document.querySelector("[data-e2e-message-input-box]")!.textContent, "my unsent draft");
 });

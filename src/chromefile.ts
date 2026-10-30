@@ -58,7 +58,7 @@ export type Options = { pollMs?: number; waitMs?: number; confirmMs?: number };
 
 export function createBackend(call: Call, { pollMs = 500, waitMs = 20_000, confirmMs = 15_000 }: Options = {}) {
   const evalIn = async <T>(tabId: number, fn: (...args: any[]) => unknown, ...args: unknown[]): Promise<T> =>
-    (await call("page.eval", { tabId, expression: buildExpression(fn, ...args) })).value as T;
+    (await call("page.eval", { tabId, expression: buildExpression(fn, ...args), awaitPromise: true })).value as T;
 
   async function until<T>(timeoutMs: number, probe: () => Promise<T | undefined>): Promise<T | undefined> {
     const end = Date.now() + timeoutMs;
@@ -205,6 +205,15 @@ export function createBackend(call: Call, { pollMs = 500, waitMs = 20_000, confi
     return { conversation_id: conversationId, ...r };
   }
 
+  // The app ignores synthetic clicks on its send button; a trusted Enter in the
+  // focused compose box (left focused by sendInPage) sends, even in a background tab.
+  async function pressEnter(tabId: number): Promise<void> {
+    const key = { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
+    await call("page.cdp", { tabId, method: "Input.dispatchKeyEvent", params: { type: "rawKeyDown", ...key } });
+    await call("page.cdp", { tabId, method: "Input.dispatchKeyEvent", params: { type: "char", text: "\r", ...key } });
+    await call("page.cdp", { tabId, method: "Input.dispatchKeyEvent", params: { type: "keyUp", ...key } });
+  }
+
   async function sendMessage(conversationId: string, text: string) {
     if (text.trim() === "") throw new Error("text must not be empty");
     if (text.length > MAX_TEXT) throw new Error(`text exceeds ${MAX_TEXT} characters`);
@@ -213,14 +222,11 @@ export function createBackend(call: Call, { pollMs = 500, waitMs = 20_000, confi
     const { name, ids } = await openConversation(tabId, id);
     const before = new Set(ids);
 
-    // Set before the eval: a transport error could hide a click that went through.
-    let clicked = true;
+    const r = await evalIn<{ ready?: boolean; reason?: string }>(tabId, page.sendInPage, id, name, text);
+    if (!r.ready) throw new Error(`${r.reason ?? "Not sent"}; nothing was sent`);
+    // From here on any error may hide a send that went through.
     try {
-      const r = await evalIn<{ clicked: boolean; reason?: string }>(tabId, page.sendInPage, id, name, text);
-      if (!r.clicked) {
-        clicked = false;
-        throw new Error(`${r.reason ?? "Not sent"}; nothing was sent`);
-      }
+      await pressEnter(tabId);
       const sent = await until(confirmMs, () =>
         transient(async () => {
           const { messages } = await evalIn<{ messages: page.Message[] }>(tabId, page.readMessages, 20);
@@ -238,7 +244,6 @@ export function createBackend(call: Call, { pollMs = 500, waitMs = 20_000, confi
         ...(matches ? {} : { note: "The new outgoing message text differs from what was typed (emoji or segmentation); check read_messages" }),
       };
     } catch (e) {
-      if (!clicked) throw e;
       throw new Error(`${MAY_HAVE_SENT} (${(e as Error).message})`);
     }
   }

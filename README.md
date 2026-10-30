@@ -32,7 +32,7 @@ Set `CHROMEFILE_BIN` if `chromefile` is not on your `PATH`.
 | `status` | Is chromefile reachable, is a Messages tab open, is it ready or does it need pairing |
 | `list_conversations` | `limit` (default 25): id, name, snippet, time, unread, pinned, muted (read only) |
 | `read_messages` | `conversation_id`, `limit` (default 30): last messages in chronological order. Navigates the Messages tab to the conversation, which marks it read |
-| `send_message` | `conversation_id`, `text` (max 2000 chars): types into the compose box, clicks send, returns `sent: true` once the new bubble appears (not confirmed delivery; see `status`). After an error that says the message may have been sent, do not retry |
+| `send_message` | `conversation_id`, `text` (max 2000 chars): types into the compose box, presses Enter (a trusted key event via CDP, since the app ignores synthetic clicks), returns `sent: true` once the new bubble appears (not confirmed delivery; see `status`). After an error that says the message may have been sent, do not retry |
 
 ## Security
 
@@ -43,7 +43,7 @@ Set `CHROMEFILE_BIN` if `chromefile` is not on your `PATH`.
 
 ## How it works
 
-Each tool runs `chromefile call page.eval` against the Messages tab. The functions in `src/page.ts` run inside the page and are serialised with `fn.toString()`. They rely on the app's `data-e2e-*` attributes and custom elements (`a[data-e2e-conversation]`, `mws-message-wrapper`, the compose box and send button). These selectors are reverse engineered and will break when Google changes the UI.
+Each tool runs `chromefile call page.eval` against the Messages tab. Sending also uses `chromefile call page.cdp` to dispatch a trusted Enter key in the compose box. The functions in `src/page.ts` run inside the page and are serialised with `fn.toString()`. They rely on the app's `data-e2e-*` attributes and custom elements (`a[data-e2e-conversation]`, `mws-message-wrapper`, the compose box and send button). These selectors are reverse engineered and will break when Google changes the UI.
 
 ## Testing
 

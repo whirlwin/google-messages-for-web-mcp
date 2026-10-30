@@ -115,15 +115,19 @@ export function clickConversation(id: string): string | null {
 }
 
 // Types, verifies and clicks in a single eval so nothing can change in between.
-export function sendInPage(id: string, expectedName: string, text: string): { clicked: boolean; reason?: string } {
+export async function sendInPage(
+  id: string,
+  expectedName: string,
+  text: string,
+): Promise<{ ready: boolean; reason?: string }> {
   const header = (document.querySelector("mw-conversation-header") as HTMLElement | null)?.innerText ?? "";
   if (location.pathname !== "/web/conversations/" + id || header.split("\n")[0]?.trim() !== expectedName) {
-    return { clicked: false, reason: "The open conversation is not the requested one" };
+    return { ready: false, reason: "The open conversation is not the requested one" };
   }
   const box = document.querySelector('[data-e2e-message-input-box][contenteditable="true"]') as HTMLElement | null;
-  if (!box) return { clicked: false, reason: "Compose box not found" };
+  if (!box) return { ready: false, reason: "Compose box not found" };
   const read = () => (box.innerText ?? box.textContent ?? "").replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
-  if (read().trim() !== "") return { clicked: false, reason: "The compose box already holds a draft; refusing to overwrite it" };
+  if (read().trim() !== "") return { ready: false, reason: "The compose box already holds a draft; refusing to overwrite it" };
   const sendBtn = () =>
     Array.from(document.querySelectorAll<HTMLButtonElement>("[data-e2e-send-text-button]")).find(
       (b) => b.getClientRects().length > 0,
@@ -134,14 +138,21 @@ export function sendInPage(id: string, expectedName: string, text: string): { cl
     if (i > 0) document.execCommand("insertLineBreak", false);
     if (line !== "") document.execCommand("insertText", false, line);
   });
-  const btn = sendBtn();
-  const enabled = !!btn && !btn.disabled && !btn.classList.contains("mat-mdc-button-disabled");
+  // Angular enables the send button on its next change detection, not synchronously.
+  let btn = sendBtn();
+  let enabled = false;
+  for (let i = 0; i < 20; i++) {
+    btn = sendBtn();
+    enabled = !!btn && !btn.disabled && !btn.classList.contains("mat-mdc-button-disabled");
+    if (enabled) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
   if (read() !== text.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ") || !enabled) {
     // The box was empty before, so clearing removes only what we typed.
     document.execCommand("selectAll", false);
     document.execCommand("delete", false);
-    return { clicked: false, reason: "Could not enter the text into the compose box" };
+    return { ready: false, reason: "Could not enter the text into the compose box" };
   }
-  (btn as HTMLButtonElement).click();
-  return { clicked: true };
+  // A synthetic click is ignored by the app, so the backend sends a trusted Enter via CDP.
+  return { ready: true };
 }
