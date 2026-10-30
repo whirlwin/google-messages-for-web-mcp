@@ -11,19 +11,24 @@ An MCP server (stdio) that reads and sends messages in [Google Messages for web]
 
 ## Install
 
-```sh
-npm install -g github:whirlwin/google-messages-for-web-mcp
-# or
-git clone https://github.com/whirlwin/google-messages-for-web-mcp && cd google-messages-for-web-mcp && npm i && npm run build
+As a Claude Code plugin (registers the MCP server for you), inside Claude Code:
+
+```
+/plugin install google-messages-for-web-mcp --marketplace whirlwin/google-messages-for-web-mcp
 ```
 
-Register with Claude Code:
+On Claude Code versions without `--marketplace`, run `/plugin marketplace add whirlwin/google-messages-for-web-mcp` first, then `/plugin install google-messages-for-web-mcp`. Restart Claude Code and run the `status` tool.
+
+Or as a plain MCP server:
 
 ```sh
+npm install -g github:whirlwin/google-messages-for-web-mcp
 claude mcp add --scope user google-messages -- google-messages-for-web-mcp
 ```
 
-Set `CHROMEFILE_BIN` if `chromefile` is not on your `PATH`.
+Set `CHROMEFILE_BIN` if `chromefile` is not on the `PATH` Claude Code sees. Leave `send_message` on per-call approval.
+
+`dist/index.js` is a single esbuild bundle committed to git, because a plugin install copies the repo without running `npm install`. Run `npm run build` after changing `src/`; CI fails when `dist/` does not match.
 
 ## Tools
 

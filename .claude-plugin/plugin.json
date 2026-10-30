@@ -1,0 +1,10 @@
+{
+  "name": "google-messages-for-web-mcp",
+  "version": "0.1.0",
+  "description": "Read and send Google Messages for web (SMS and RCS) through your paired Chrome tab, via chromefile",
+  "author": { "name": "Øyvind Ødegård" },
+  "homepage": "https://github.com/whirlwin/google-messages-for-web-mcp",
+  "repository": "https://github.com/whirlwin/google-messages-for-web-mcp",
+  "license": "MIT",
+  "keywords": ["mcp", "google-messages", "sms", "rcs", "chromefile"]
+}

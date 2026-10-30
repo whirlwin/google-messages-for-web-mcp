@@ -4,23 +4,34 @@
   "description": "MCP server that reads and sends Google Messages for web through your logged-in Chrome via chromefile",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=24" },
-  "bin": { "google-messages-for-web-mcp": "dist/index.js" },
-  "files": ["dist"],
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "google-messages-for-web-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    ".claude-plugin",
+    ".mcp.json"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
-    "prepare": "npm run build",
+    "build": "node build.mjs",
     "lint": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
-    "test:e2e": "bash test/e2e.sh"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "zod": "^4.6.7"
+    "test:e2e": "bash test/e2e.sh",
+    "check:dist": "npm run build && git diff --exit-code -- dist"
   },
   "devDependencies": {
     "@types/node": "^24",
+    "esbuild": "^0.25.12",
     "happy-dom": "^21.0.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whirlwin/google-messages-for-web-mcp.git"
   }
 }

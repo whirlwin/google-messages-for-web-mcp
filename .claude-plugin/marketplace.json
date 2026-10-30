@@ -1,0 +1,14 @@
+{
+  "name": "google-messages-for-web-mcp",
+  "owner": {
+    "name": "Øyvind Ødegård"
+  },
+  "description": "Single-plugin marketplace for google-messages-for-web-mcp",
+  "plugins": [
+    {
+      "name": "google-messages-for-web-mcp",
+      "source": "./",
+      "description": "Read and send Google Messages for web (SMS and RCS) through your paired Chrome tab, via chromefile"
+    }
+  ]
+}
